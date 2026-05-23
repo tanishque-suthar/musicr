@@ -1,0 +1,171 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Configuration and cache directories
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/musicr"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/musicr"
+
+# Create necessary directories
+mkdir -p "$CONFIG_DIR" "$CACHE_DIR"
+
+# Source utility functions
+if [ ! -f "$SCRIPT_DIR/core.sh" ]; then
+    echo -e "${RED}Error: core.sh not found at $SCRIPT_DIR${NC}" >&2
+    exit 1
+fi
+source "$SCRIPT_DIR/core.sh"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Version
+VERSION="1.0.0"
+
+show_help() {
+    cat << EOF
+musicr - YouTube Music Radio CLI
+
+USAGE:
+    musicr [OPTIONS] [SEARCH_QUERY]
+
+OPTIONS:
+    -s, --search <query>    Search for a song and play it
+    -i, --interactive       Start interactive search mode
+    -c, --config            Show config directory location
+    --setup                 Initialize/reset configuration
+    --version               Show version
+    -h, --help              Show this help message
+
+EXAMPLES:
+    musicr taylor swift
+    musicr -s "the weeknd blinding lights"
+    musicr --interactive
+
+REQUIREMENTS:
+    - yt-dlp
+    - mpv
+    - bash 4.0+
+
+For more info, visit: https://github.com/yourusername/musicr
+EOF
+}
+
+show_version() {
+    echo "musicr v$VERSION"
+}
+
+setup_config() {
+    echo -e "${YELLOW}Setting up musicr configuration...${NC}"
+    
+    # Copy default config if it doesn't exist
+    if [ ! -f "$CONFIG_DIR/config" ]; then
+        cp "$SCRIPT_DIR/config.default" "$CONFIG_DIR/config"
+        echo -e "${GREEN}✓ Created config at: $CONFIG_DIR/config${NC}"
+    else
+        echo -e "${YELLOW}Config already exists at: $CONFIG_DIR/config${NC}"
+    fi
+    
+    # Copy Lua script if it doesn't exist
+    mkdir -p "$CONFIG_DIR/scripts"
+    if [ ! -f "$CONFIG_DIR/scripts/lazy-radio.lua" ]; then
+        cp "$SCRIPT_DIR/config/lazy-radio.lua" "$CONFIG_DIR/scripts/lazy-radio.lua"
+        echo -e "${GREEN}✓ Created mpv script at: $CONFIG_DIR/scripts/lazy-radio.lua${NC}"
+    fi
+    
+    echo -e "${GREEN}Setup complete!${NC}"
+}
+
+check_dependencies() {
+    local missing=()
+    
+    for cmd in yt-dlp mpv; do
+        if ! command -v "$cmd" &> /dev/null; then
+            missing+=("$cmd")
+        fi
+    done
+    
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo -e "${RED}Error: Missing required dependencies: ${missing[*]}${NC}" >&2
+        echo "Install them with:" >&2
+        echo "  Ubuntu/Debian: sudo apt install yt-dlp mpv" >&2
+        echo "  Fedora: sudo dnf install yt-dlp mpv" >&2
+        echo "  Arch: sudo pacman -S yt-dlp mpv" >&2
+        return 1
+    fi
+}
+
+main() {
+    local query=""
+    local interactive=false
+    
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            --version)
+                show_version
+                exit 0
+                ;;
+            -c|--config)
+                echo "$CONFIG_DIR"
+                exit 0
+                ;;
+            --setup)
+                setup_config
+                exit 0
+                ;;
+            -i|--interactive)
+                interactive=true
+                shift
+                ;;
+            -s|--search)
+                query="$2"
+                shift 2
+                ;;
+            -*)
+                echo -e "${RED}Unknown option: $1${NC}" >&2
+                show_help
+                exit 1
+                ;;
+            *)
+                # Treat remaining args as search query
+                query="$@"
+                break
+                ;;
+        esac
+    done
+    
+    # Check dependencies
+    if ! check_dependencies; then
+        exit 1
+    fi
+    
+    # Interactive mode
+    if [ "$interactive" = true ]; then
+        read -p "Search: " query
+    fi
+    
+    # Must have a search query
+    if [ -z "$query" ]; then
+        show_help
+        exit 1
+    fi
+    
+    # Play the music
+    play_music "$query"
+}
+
+# Run main function if this script is executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

@@ -1,0 +1,16 @@
+# musicr configuration file
+# Copy this to ~/.config/musicr/config and customize as needed
+
+# Video format for audio extraction
+# Options: 251 (webm opus 128k), 140 (m4a aac 128k), bestaudio, best
+VIDEO_FORMAT="251/140/bestaudio/best"
+
+# YouTube player client for yt-dlp
+# Options: android, web, tv, ios
+PLAYER_CLIENT="android"
+
+# MPV demuxer buffer size (for smooth playback)
+DEMUXER_MAX_BYTES="67MiB"
+
+# Optional: MPV status message format
+# TERM_STATUS_MSG="Status: ${time-pos} / ${duration} (${percent-pos}%)"
