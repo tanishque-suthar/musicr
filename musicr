@@ -5,6 +5,12 @@ set -euo pipefail
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Colors for output (define early for use in error messages)
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
 # Configuration and cache directories
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/musicr"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/musicr"
@@ -18,12 +24,6 @@ if [ ! -f "$SCRIPT_DIR/core.sh" ]; then
     exit 1
 fi
 source "$SCRIPT_DIR/core.sh"
-
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
 
 # Version
 VERSION="1.0.0"
