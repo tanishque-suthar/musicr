@@ -54,8 +54,6 @@ archives:
 
 release:
   github:
-    owner: yourusername
-    name: musicr
   draft: false
   prerelease: auto
 
