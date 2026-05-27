@@ -1,2 +1,42 @@
 currenttool.md
+
+# Go binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.so.*
+*.dylib
+*.test
+*.out
+
+# Build output
+/build/
+/dist/
+
+# Dependency directories
+vendor/
+go.work
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# musicr specific
+config.json
+musicr-cache/
+
+# Ignore old bash scripts and binaries
+bashrc
+original script/
+lazy-radio.lua
+core.sh
+musicr (old bash script)
+
+# GitHub Actions
 .github/*
+!.github/workflows/
