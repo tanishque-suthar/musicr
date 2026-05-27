@@ -1,0 +1,80 @@
+# GoReleaser configuration for building cross-platform binaries
+version: 2
+
+project_name: musicr
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+builds:
+  - id: musicr
+    main: ./cmd/musicr
+    binary: musicr
+    
+    goos:
+      - darwin
+      - windows
+      - linux
+    
+    goarch:
+      - amd64
+      - arm64
+    
+    ignore:
+      - goos: windows
+        goarch: arm64
+      - goos: linux
+        goarch: arm64
+    
+    env:
+      - CGO_ENABLED=0
+    
+    ldflags:
+      - -s -w
+      - -X main.Version={{ .Version }}
+    
+    gcflags:
+      - -trimpath
+
+archives:
+  - id: default
+    name_template: >-
+      {{- .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+      - goos: darwin
+        format: tar.gz
+      - goos: linux
+        format: tar.gz
+    files:
+      - README.md
+      - LICENSE*
+      - config.default
+
+release:
+  github:
+    owner: yourusername
+    name: musicr
+  
+  draft: false
+  prerelease: auto
+  name_template: "Release {{.Version}}"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+      - Merge pull request
+      - Merge branch
