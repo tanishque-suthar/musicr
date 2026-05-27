@@ -1,6 +1,4 @@
 # GoReleaser configuration for building cross-platform binaries
-version: 2
-
 project_name: musicr
 
 before:
@@ -9,8 +7,7 @@ before:
     - go generate ./...
 
 builds:
-  - id: musicr
-    main: ./cmd/musicr
+  - main: ./cmd/musicr
     binary: musicr
     
     goos:
@@ -34,13 +31,9 @@ builds:
     ldflags:
       - -s -w
       - -X main.Version={{ .Version }}
-    
-    gcflags:
-      - -trimpath
 
 archives:
-  - id: default
-    name_template: >-
+  - name_template: >-
       {{- .ProjectName }}_
       {{- .Version }}_
       {{- .Os }}_
@@ -63,10 +56,8 @@ release:
   github:
     owner: yourusername
     name: musicr
-  
   draft: false
   prerelease: auto
-  name_template: "Release {{.Version}}"
 
 changelog:
   sort: asc
