@@ -45,13 +45,8 @@ func (p *Player) Play(streamURL, radioURL, firstTitle string) error {
 		args = append(args, fmt.Sprintf("--term-status-msg=%s", p.Config.TermStatusMsg))
 	}
 
-	// Add script options for the radio/queue script if radioURL is provided
-	if radioURL != "" {
-		scriptOpts := fmt.Sprintf("radio_url=%s,first_title=%s", radioURL, firstTitle)
-		// Note: We would use a script here, but for now we'll just queue tracks via playlist
-		// args = append(args, "--script=<path-to-lazy-radio-equivalent>")
-		// args = append(args, fmt.Sprintf("--script-opts=%s", scriptOpts))
-	}
+	// Note: radioURL would be used for script-based queue management
+	// For now, mpv handles queue management through yt-dlp integration
 
 	// Add yt-dlp integration options
 	ytdlpOpts := fmt.Sprintf(

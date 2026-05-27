@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 )
 
 // EnsureDependency checks if a binary exists in PATH or cache, and downloads it if necessary
@@ -111,10 +110,8 @@ func getYTDLPURL(os, arch string) string {
 // getMPVURL returns the latest mpv download URL for the platform
 func getMPVURL(os, arch string) string {
 	// mpv releases: https://github.com/mpv-player/mpv/releases
-	baseURL := "https://github.com/mpv-player/mpv/releases/download"
-
-	// Note: This is a simplified version. For production, we'd use the latest release API
-	// For now, we'll direct to a known stable build source or use GitHub API
+	// Note: mpv is complex to auto-download (requires compilation or pre-built binaries)
+	// For now, we'll return empty and let users install via package managers
 
 	switch os {
 	case "darwin":

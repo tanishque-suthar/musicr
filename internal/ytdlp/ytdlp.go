@@ -3,7 +3,6 @@ package ytdlp
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 )
