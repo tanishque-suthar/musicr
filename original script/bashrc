@@ -1,0 +1,23 @@
+musicr() {
+    echo "starting hold up"
+    output=$(yt-dlp --print id --print title --print urls \
+        --format "251/140/bestaudio/best" \
+        --extractor-args "youtube:player_client=android;skip=webpage" \
+        --force-ipv4 --no-warnings "ytsearch1:$*" 2>/dev/null)
+
+    id=$(echo "$output" | sed -n '1p')
+    title=$(echo "$output" | sed -n '2p')
+    stream_url=$(echo "$output" | sed -n '3p')
+
+    clean_title=$(echo "$title" | tr -d ',=')
+
+    mpv --no-video \
+        --term-status-msg="Status: \${time-pos} / \${duration} (\${percent-pos}%)" \
+        --script="$HOME/.config/mpv/scripts/lazy-radio.lua" \
+        --script-opts="radio_url=https://www.youtube.com/watch?v=$id&list=RD$id,first_title=$clean_title" \
+        --ytdl-raw-options="ignore-config=,no-warnings=,no-check-certificates=,format=251/140/bestaudio/best,force-ipv4=" \
+        --ytdl-raw-options-append="extractor-args=youtube:player_client=android" \
+        --cache=yes --demuxer-max-bytes=67MiB \
+        --prefetch-playlist=yes \
+        "$stream_url"
+}
