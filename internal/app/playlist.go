@@ -8,9 +8,12 @@ import (
 	"strings"
 )
 
-// playlistDir returns the directory for storing playlists,
+// playlistDirFn is overridable by tests.
+var playlistDirFn = playlistDirImpl
+
+// playlistDirImpl returns the directory for storing playlists,
 // creating it if necessary.
-func playlistDir() (string, error) {
+func playlistDirImpl() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
@@ -24,7 +27,7 @@ func playlistDir() (string, error) {
 
 // savePlaylistFile writes track titles to a playlist file.
 func savePlaylistFile(name string, titles []string) error {
-	dir, err := playlistDir()
+	dir, err := playlistDirFn()
 	if err != nil {
 		return err
 	}
@@ -44,7 +47,7 @@ func savePlaylistFile(name string, titles []string) error {
 
 // loadPlaylistFile reads track queries from a playlist file.
 func loadPlaylistFile(name string) ([]string, error) {
-	dir, err := playlistDir()
+	dir, err := playlistDirFn()
 	if err != nil {
 		return nil, err
 	}
@@ -66,9 +69,9 @@ func loadPlaylistFile(name string) ([]string, error) {
 	return queries, scanner.Err()
 }
 
-// listPlaylists returns the names of all saved playlists.
-func listPlaylists() ([]string, error) {
-	dir, err := playlistDir()
+// ListPlaylists returns the names of all saved playlists.
+func ListPlaylists() ([]string, error) {
+	dir, err := playlistDirFn()
 	if err != nil {
 		return nil, err
 	}

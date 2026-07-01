@@ -106,6 +106,7 @@ func (a *App) Run() error {
 	// Handle signals for clean exit
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(sigCh)
 	go func() {
 		<-sigCh
 		a.cancel()
@@ -184,7 +185,7 @@ func (a *App) handleKey(key byte) bool {
 		return true
 
 	case 'a':
-		a.enterLineInput(inputAdd, "Search: ")
+		a.enterLineInput(inputAdd)
 
 	case 'n':
 		a.nextTrack()
@@ -196,7 +197,7 @@ func (a *App) handleKey(key byte) bool {
 		a.togglePause()
 
 	case 's':
-		a.enterLineInput(inputSave, "Save as: ")
+		a.enterLineInput(inputSave)
 
 	case 'l':
 		a.listAndLoadPlaylist()
@@ -211,7 +212,7 @@ func (a *App) handleKey(key byte) bool {
 		}
 
 	case 'd':
-		a.enterLineInput(inputDelete, "Delete track #: ")
+		a.enterLineInput(inputDelete)
 	}
 
 	a.render()
@@ -271,8 +272,11 @@ func (a *App) processLineInput(action inputAction, line string) {
 	case inputDelete:
 		if idx, err := strconv.Atoi(line); err == nil {
 			idx-- // convert from 1-based display to 0-based
-			if a.queue.Remove(idx) {
+			if ok, wasCurrent := a.queue.Remove(idx); ok {
 				a.statusMsg = fmt.Sprintf("Removed track #%d", idx+1)
+				if wasCurrent {
+					a.player.Stop()
+				}
 			} else {
 				a.statusMsg = "Invalid track number"
 			}
@@ -320,21 +324,36 @@ func (a *App) handlePrefetchResult(result prefetchResult) {
 func (a *App) playTrack(index int) {
 	a.queue.SetCurrent(index)
 
-	// Resolve the track
 	go func(idx int) {
 		track, err := a.queue.ResolveTrack(a.ctx, idx)
 		if err != nil {
-			a.prefetchCh <- prefetchResult{index: idx, err: err}
+			select {
+			case a.prefetchCh <- prefetchResult{index: idx, err: err}:
+			case <-a.ctx.Done():
+			}
 			return
 		}
 
 		url := track.StreamURL()
-		if url != "" {
-			a.player.LoadFile(url, "replace")
+		if url == "" {
+			select {
+			case a.prefetchCh <- prefetchResult{index: idx, err: fmt.Errorf("track has no stream URL")}:
+			case <-a.ctx.Done():
+			}
+			return
 		}
-		a.prefetchCh <- prefetchResult{index: idx, track: track}
+		if err := a.player.LoadFile(url, "replace"); err != nil {
+			select {
+			case a.prefetchCh <- prefetchResult{index: idx, err: fmt.Errorf("loadfile: %w", err)}:
+			case <-a.ctx.Done():
+			}
+			return
+		}
+		select {
+		case a.prefetchCh <- prefetchResult{index: idx, track: track}:
+		case <-a.ctx.Done():
+		}
 
-		// Also prefetch the next track
 		if nextTrack, nextIdx, ok := a.queue.PeekNext(); ok && !nextTrack.Resolved() {
 			a.queue.ResolveTrack(a.ctx, nextIdx)
 		}
@@ -383,14 +402,13 @@ func (a *App) togglePause() {
 	a.player.TogglePause()
 }
 
-// enterLineInput switches to line-input mode with the given prompt.
-func (a *App) enterLineInput(action inputAction, prompt string) {
+// enterLineInput switches to line-input mode.
+// The prompt is derived from inputType by render().
+func (a *App) enterLineInput(action inputAction) {
 	a.inputMode = ui.ModeLineInput
 	a.inputType = action
 	a.inputBuf = ""
 	a.statusMsg = ""
-	// Store prompt in status temporarily — render will pick it up from state
-	_ = prompt
 	a.render()
 }
 
@@ -418,13 +436,22 @@ func (a *App) checkRadio() {
 	go func(videoID string) {
 		titles, err := ytdlp.FetchMixTracks(a.ctx, videoID, 20)
 		if err != nil {
-			a.prefetchCh <- prefetchResult{err: fmt.Errorf("radio: %w", err)}
+			select {
+			case a.prefetchCh <- prefetchResult{err: fmt.Errorf("radio: %w", err)}:
+			case <-a.ctx.Done():
+			}
 			return
 		}
 		if len(titles) > 0 {
-			a.radioCh <- titles
+			select {
+			case a.radioCh <- titles:
+			case <-a.ctx.Done():
+			}
 		} else {
-			a.prefetchCh <- prefetchResult{err: fmt.Errorf("radio: no tracks found")}
+			select {
+			case a.prefetchCh <- prefetchResult{err: fmt.Errorf("radio: no tracks found")}:
+			case <-a.ctx.Done():
+			}
 		}
 	}(current.ID)
 }
@@ -432,14 +459,15 @@ func (a *App) checkRadio() {
 // listAndLoadPlaylist shows available playlists and enters load mode.
 func (a *App) listAndLoadPlaylist() {
 	a.loadPlaylistList()
-	a.enterLineInput(inputLoad, "Load playlist: ")
+	a.enterLineInput(inputLoad)
 }
 
 // loadPlaylistList loads the list of available playlists.
 func (a *App) loadPlaylistList() {
-	entries, err := listPlaylists()
+	entries, err := ListPlaylists()
 	if err != nil {
 		a.playlists = nil
+		a.statusMsg = fmt.Sprintf("Playlist error: %v", err)
 		return
 	}
 	a.playlists = entries
@@ -535,15 +563,35 @@ func (a *App) cleanup() {
 }
 
 // readKeys reads single bytes from stdin and sends them on keyCh.
+// Uses a helper goroutine so ctx cancellation unblocks immediately.
 func (a *App) readKeys() {
 	defer close(a.keyCh)
-	for {
-		key, err := a.ui.ReadKey()
-		if err != nil {
-			return
+	readCh := make(chan byte, 1)
+	go func() {
+		for {
+			key, err := a.ui.ReadKey()
+			if err != nil {
+				close(readCh)
+				return
+			}
+			select {
+			case readCh <- key:
+			case <-a.ctx.Done():
+				return
+			}
 		}
+	}()
+	for {
 		select {
-		case a.keyCh <- key:
+		case key, ok := <-readCh:
+			if !ok {
+				return
+			}
+			select {
+			case a.keyCh <- key:
+			case <-a.ctx.Done():
+				return
+			}
 		case <-a.ctx.Done():
 			return
 		}

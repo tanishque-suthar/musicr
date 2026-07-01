@@ -47,25 +47,24 @@ func (q *Queue) AddTracks(queries []string) {
 }
 
 // Remove removes the track at the given index (0-based).
-// Returns false if the index is out of range.
-func (q *Queue) Remove(index int) bool {
+// Returns false if the index is out of range, and whether the removed
+// track was the currently playing one.
+func (q *Queue) Remove(index int) (ok bool, removedCurrent bool) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if index < 0 || index >= len(q.tracks) {
-		return false
+		return false, false
 	}
+	wasCurrent := index == q.current
 	q.tracks = append(q.tracks[:index], q.tracks[index+1:]...)
-	// Adjust current pointer
 	if index < q.current {
 		q.current--
 	} else if index == q.current {
-		// If we removed the current track, current now points to the next
-		// (or is invalid if we removed the last)
 		if q.current >= len(q.tracks) {
 			q.current = len(q.tracks) - 1
 		}
 	}
-	return true
+	return true, wasCurrent
 }
 
 // Current returns the currently playing track and its index.
