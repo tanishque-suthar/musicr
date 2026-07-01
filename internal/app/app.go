@@ -290,6 +290,11 @@ func (a *App) processLineInput(action inputAction, line string) {
 				a.statusMsg = fmt.Sprintf("Removed track #%d", idx+1)
 				if wasCurrent {
 					a.player.Stop()
+					if _, currentIdx := a.queue.Current(); currentIdx != -1 {
+						a.playTrack(currentIdx)
+					} else {
+						a.statusMsg = "Removed playing track (queue empty)"
+					}
 				}
 			} else {
 				a.statusMsg = "Invalid track number"
