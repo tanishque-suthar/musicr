@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/tsvd/musicr/internal/app"
+	"github.com/tanishque-suthar/musicr/internal/app"
 )
 
 func main() {

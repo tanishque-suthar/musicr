@@ -9,10 +9,10 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/tsvd/musicr/internal/mpv"
-	"github.com/tsvd/musicr/internal/queue"
-	"github.com/tsvd/musicr/internal/ui"
-	"github.com/tsvd/musicr/internal/ytdlp"
+	"github.com/tanishque-suthar/musicr/internal/mpv"
+	"github.com/tanishque-suthar/musicr/internal/queue"
+	"github.com/tanishque-suthar/musicr/internal/ui"
+	"github.com/tanishque-suthar/musicr/internal/ytdlp"
 )
 
 // Config holds the app configuration from CLI args.

@@ -35,15 +35,15 @@ pip install -U yt-dlp
 ### From source
 
 ```bash
-go install github.com/tsvd/musicr@latest
+go install github.com/tanishque-suthar/musicr@latest
 ```
 
 ### Pre-built binaries
 
-Download from [GitHub Releases](https://github.com/tsvd/musicr/releases) or:
+Download from [GitHub Releases](https://github.com/tanishque-suthar/musicr/releases) or:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tsvd/musicr/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/tanishque-suthar/musicr/main/install.sh | sh
 ```
 
 ## Usage

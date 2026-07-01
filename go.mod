@@ -1,4 +1,4 @@
-module github.com/tsvd/musicr
+module github.com/tanishque-suthar/musicr
 
 go 1.23.0
 

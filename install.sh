@@ -1,10 +1,10 @@
 #!/bin/sh
 # musicr installer — downloads the latest release binary for your platform.
-# Usage: curl -fsSL https://raw.githubusercontent.com/tsvd/musicr/main/install.sh | sh
+# Usage: curl -fsSL https://raw.githubusercontent.com/tanishque-suthar/musicr/main/install.sh | sh
 
 set -e
 
-REPO="tsvd/musicr"
+REPO="tanishque-suthar/musicr"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')

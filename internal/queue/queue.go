@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/tsvd/musicr/internal/ytdlp"
+	"github.com/tanishque-suthar/musicr/internal/ytdlp"
 )
 
 // Queue manages an ordered list of tracks for playback.
