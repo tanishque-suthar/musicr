@@ -34,6 +34,7 @@ type App struct {
 	radioOn        bool
 	radioFetching  bool
 	paused         bool
+	volume     float64
 	timePos    float64
 	duration   float64
 	inputMode  ui.InputMode
@@ -74,6 +75,7 @@ func New(cfg Config) *App {
 		config:     cfg,
 		queue:      queue.New(),
 		radioOn:    !cfg.NoRadio,
+		volume:     100,
 		keyCh:      make(chan byte, 16),
 		prefetchCh: make(chan prefetchResult, 4),
 		radioCh:    make(chan []string, 1),
@@ -213,6 +215,18 @@ func (a *App) handleKey(key byte) bool {
 
 	case 'd':
 		a.enterLineInput(inputDelete)
+
+	case '+', '=':
+		a.player.VolumeUp(1)
+
+	case '-', '_':
+		a.player.VolumeDown(1)
+
+	case ']', '.':
+		a.player.Seek(5)
+
+	case '[', ',':
+		a.player.Seek(-5)
 	}
 
 	a.render()
@@ -293,6 +307,8 @@ func (a *App) handleMpvEvent(evt mpv.Event) {
 		a.duration = evt.FloatVal
 	case mpv.EventPause:
 		a.paused = evt.BoolVal
+	case mpv.EventVolume:
+		a.volume = evt.FloatVal
 	case mpv.EventEndFile:
 		// Only auto-advance if the file ended naturally (eof) or due to an error.
 		// Ignore "stop" (manual stop/skip) or "quit".
@@ -547,6 +563,7 @@ func (a *App) render() {
 		TimePos:     a.timePos,
 		Duration:    a.duration,
 		Paused:      a.paused,
+		Volume:      a.volume,
 		RadioOn:     a.radioOn,
 		Queue:       a.queue.Titles(),
 		QueueIdx:    idx,

@@ -22,6 +22,7 @@ type State struct {
 	TimePos     float64
 	Duration    float64
 	Paused      bool
+	Volume      float64
 	RadioOn     bool
 	Queue       []string // display names for all tracks
 	QueueIdx    int      // index of currently playing track (-1 if none)
@@ -114,7 +115,7 @@ func (u *UI) Render(s State) {
 		radioStatus = "on"
 		radioColor = "\033[92m" // bright green
 	}
-	b.WriteString(fmt.Sprintf("  \033[1;95mmusicr\033[0m  —  radio mode: %s%s\033[0m\n\n", radioColor, radioStatus))
+	b.WriteString(fmt.Sprintf("  \033[1;95mmusicr\033[0m  —  radio mode: %s%s\033[0m  |  vol: %.0f%%\n\n", radioColor, radioStatus, s.Volume))
 
 	// Now playing
 	if s.TrackTitle != "" {

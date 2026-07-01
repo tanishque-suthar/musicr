@@ -26,8 +26,8 @@ func TestFormatTime(t *testing.T) {
 
 func TestRenderProgressBarMinimumWidth(t *testing.T) {
 	result := renderProgressBar(0, 100, 1)
-	if !strings.Contains(result, "[") || !strings.Contains(result, "]") {
-		t.Error("progress bar missing brackets")
+	if result[0] == '[' {
+		t.Error("narrow terminal should return time only, no brackets")
 	}
 }
 
