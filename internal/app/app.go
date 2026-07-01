@@ -284,7 +284,11 @@ func (a *App) handleMpvEvent(evt mpv.Event) {
 	case mpv.EventPause:
 		a.paused = evt.BoolVal
 	case mpv.EventEndFile:
-		a.onTrackEnd()
+		// Only auto-advance if the file ended naturally (eof) or due to an error.
+		// Ignore "stop" (manual stop/skip) or "quit".
+		if evt.TextVal == "eof" || evt.TextVal == "error" {
+			a.onTrackEnd()
+		}
 	case mpv.EventStartFile:
 		a.timePos = 0
 		a.duration = 0

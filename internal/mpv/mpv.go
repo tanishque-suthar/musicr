@@ -31,6 +31,7 @@ type Event struct {
 	Type     EventType
 	FloatVal float64 // for TimePos, Duration
 	BoolVal  bool    // for Pause
+	TextVal  string  // for Reason
 }
 
 // Player wraps an mpv subprocess and communicates via JSON IPC.
@@ -60,6 +61,7 @@ type ipcResponse struct {
 	Event     string      `json:"event,omitempty"`
 	Name      string      `json:"name,omitempty"` // for property-change events
 	ID        int64       `json:"id,omitempty"`   // for property-change events
+	Reason    string      `json:"reason,omitempty"`
 }
 
 // Start spawns a new mpv process in headless/idle mode and connects via IPC.
@@ -222,7 +224,7 @@ func (p *Player) readEvents() {
 		case "start-file":
 			p.Events <- Event{Type: EventStartFile}
 		case "end-file":
-			p.Events <- Event{Type: EventEndFile}
+			p.Events <- Event{Type: EventEndFile, TextVal: resp.Reason}
 		case "idle":
 			p.Events <- Event{Type: EventIdle}
 		case "playback-restart":
