@@ -193,7 +193,12 @@ func (u *UI) Render(s State) {
 		b.WriteString("  \033[90m[a]dd  [n]ext  [p]rev  [space]pause  [s]ave  [l]oad  [r]adio  [d]elete  [q]uit\033[0m")
 	}
 
-	fmt.Fprint(os.Stdout, b.String())
+	// In raw terminal mode, \n only moves the cursor down (Line Feed), but does
+	// not return to the beginning of the line (Carriage Return).
+	// Translate all \n to \r\n to ensure correct layout rendering.
+	output := b.String()
+	output = strings.ReplaceAll(output, "\n", "\r\n")
+	fmt.Fprint(os.Stdout, output)
 }
 
 // renderProgressBar creates a text progress bar.
