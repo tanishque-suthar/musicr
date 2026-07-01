@@ -165,6 +165,11 @@ func (p *Player) Stop() error {
 	return p.sendCommand("stop")
 }
 
+// SetVolume sets the volume to an absolute value (0-100).
+func (p *Player) SetVolume(vol float64) error {
+	return p.setProperty("volume", vol)
+}
+
 // VolumeUp increases volume by the given amount (0-100).
 func (p *Player) VolumeUp(delta float64) error {
 	return p.sendCommand("add", "volume", delta)

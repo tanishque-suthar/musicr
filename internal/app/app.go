@@ -217,16 +217,22 @@ func (a *App) handleKey(key byte) bool {
 		a.enterLineInput(inputDelete)
 
 	case '+', '=':
-		a.player.VolumeUp(1)
+		a.volume = min(a.volume+1, 100)
+		a.player.SetVolume(a.volume)
+		a.statusMsg = fmt.Sprintf("Volume: %.0f%%", a.volume)
 
 	case '-', '_':
-		a.player.VolumeDown(1)
+		a.volume = max(a.volume-1, 0)
+		a.player.SetVolume(a.volume)
+		a.statusMsg = fmt.Sprintf("Volume: %.0f%%", a.volume)
 
 	case ']', '.':
 		a.player.Seek(5)
+		a.statusMsg = "Seek +5s"
 
 	case '[', ',':
 		a.player.Seek(-5)
+		a.statusMsg = "Seek -5s"
 	}
 
 	a.render()
