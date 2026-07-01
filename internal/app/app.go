@@ -466,6 +466,7 @@ func (a *App) checkRadio() {
 	}
 
 	a.radioFetching = true
+	currentTitle := current.Title
 	go func(videoID string) {
 		titles, err := ytdlp.FetchMixTracks(a.ctx, videoID, 20)
 		if err != nil {
@@ -475,14 +476,15 @@ func (a *App) checkRadio() {
 			}
 			return
 		}
-		if len(titles) > 0 {
-			select {
-			case a.radioCh <- titles:
-			case <-a.ctx.Done():
+		filtered := make([]string, 0, len(titles))
+		for _, t := range titles {
+			if t != currentTitle {
+				filtered = append(filtered, t)
 			}
-		} else {
+		}
+		if len(filtered) > 0 {
 			select {
-			case a.prefetchCh <- prefetchResult{err: fmt.Errorf("radio: no tracks found")}:
+			case a.radioCh <- filtered:
 			case <-a.ctx.Done():
 			}
 		}
