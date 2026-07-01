@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/tsvd/musicr/internal/mpv"
@@ -30,8 +31,9 @@ type App struct {
 	ui     *ui.UI
 
 	// State
-	radioOn    bool
-	paused     bool
+	radioOn        bool
+	radioFetching  bool
+	paused         bool
 	timePos    float64
 	duration   float64
 	inputMode  ui.InputMode
@@ -154,9 +156,13 @@ func (a *App) eventLoop() error {
 			a.handleMpvEvent(evt)
 
 		case result := <-a.prefetchCh:
+			if result.err != nil && strings.HasPrefix(result.err.Error(), "radio:") {
+				a.radioFetching = false
+			}
 			a.handlePrefetchResult(result)
 
 		case titles := <-a.radioCh:
+			a.radioFetching = false
 			a.queue.AddTracks(titles)
 			a.statusMsg = fmt.Sprintf("Radio: added %d tracks", len(titles))
 			a.render()
@@ -303,7 +309,11 @@ func (a *App) handlePrefetchResult(result prefetchResult) {
 		a.render()
 		return
 	}
-	// Track was updated in the queue by ResolveTrack, nothing else needed
+	// If the resolved track is the current playing track, trigger radio check.
+	_, currentIdx := a.queue.Current()
+	if result.index == currentIdx {
+		a.checkRadio()
+	}
 }
 
 // playTrack resolves and starts playing the track at the given index.
@@ -393,7 +403,7 @@ func (a *App) exitLineInput() {
 
 // checkRadio triggers radio fetch if needed.
 func (a *App) checkRadio() {
-	if !a.radioOn {
+	if !a.radioOn || a.radioFetching {
 		return
 	}
 	if a.queue.Remaining() > 5 {
@@ -404,6 +414,7 @@ func (a *App) checkRadio() {
 		return
 	}
 
+	a.radioFetching = true
 	go func(videoID string) {
 		titles, err := ytdlp.FetchMixTracks(a.ctx, videoID, 20)
 		if err != nil {
@@ -412,6 +423,8 @@ func (a *App) checkRadio() {
 		}
 		if len(titles) > 0 {
 			a.radioCh <- titles
+		} else {
+			a.prefetchCh <- prefetchResult{err: fmt.Errorf("radio: no tracks found")}
 		}
 	}(current.ID)
 }
