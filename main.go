@@ -145,5 +145,9 @@ Interactive keys:
   l       Load a playlist
   r       Toggle radio mode
   d       Delete a track from the queue
+  +/=     Volume up
+  -/_     Volume down
+  ]/.     Seek forward 5s
+  [/,     Seek backward 5s
   q       Quit`)
 }

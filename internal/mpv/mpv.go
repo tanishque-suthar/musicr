@@ -22,6 +22,7 @@ const (
 	EventPause                           // pause state changed
 	EventTimePos                         // playback position updated
 	EventDuration                        // duration became known
+	EventVolume                          // volume changed
 	EventIdle                            // mpv entered idle state
 	EventPlaybackRestart                 // playback restarted (seek finished, etc.)
 )
@@ -118,6 +119,7 @@ func Start() (*Player, error) {
 	p.observeProperty(1, "pause")
 	p.observeProperty(2, "time-pos")
 	p.observeProperty(3, "duration")
+	p.observeProperty(4, "volume")
 
 	// Start event reader goroutine
 	go p.readEvents()
@@ -161,6 +163,22 @@ func (p *Player) TogglePause() error {
 // Stop stops playback and clears mpv's playlist.
 func (p *Player) Stop() error {
 	return p.sendCommand("stop")
+}
+
+// VolumeUp increases volume by the given amount (0-100).
+func (p *Player) VolumeUp(delta float64) error {
+	return p.sendCommand("add", "volume", delta)
+}
+
+// VolumeDown decreases volume by the given amount (0-100).
+func (p *Player) VolumeDown(delta float64) error {
+	return p.sendCommand("add", "volume", -delta)
+}
+
+// Seek seeks relative to current position by the given seconds.
+// Positive = forward, negative = backward.
+func (p *Player) Seek(seconds float64) error {
+	return p.sendCommand("seek", seconds, "relative")
 }
 
 // Quit closes the connection and waits for mpv to exit.
@@ -255,6 +273,10 @@ func (p *Player) readEvents() {
 			case "duration":
 				if v, ok := resp.Data.(float64); ok {
 					p.Events <- Event{Type: EventDuration, FloatVal: v}
+				}
+			case "volume":
+				if v, ok := resp.Data.(float64); ok {
+					p.Events <- Event{Type: EventVolume, FloatVal: v}
 				}
 			}
 		}
