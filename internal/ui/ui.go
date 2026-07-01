@@ -203,14 +203,16 @@ func (u *UI) Render(s State) {
 
 // renderProgressBar creates a text progress bar.
 func renderProgressBar(pos, dur float64, width int) string {
-	if width < 20 {
-		width = 20
+	timeStr := fmt.Sprintf(" %s / %s", formatTime(pos), formatTime(dur))
+	
+	// If the terminal is too narrow to even show a tiny bar, just return the time
+	if width < len(timeStr)+5 {
+		return timeStr
 	}
 
-	timeStr := fmt.Sprintf(" %s / %s", formatTime(pos), formatTime(dur))
 	barWidth := width - len(timeStr) - 2 // 2 for brackets
-	if barWidth < 10 {
-		barWidth = 10
+	if barWidth < 1 {
+		barWidth = 1
 	}
 
 	var pct float64

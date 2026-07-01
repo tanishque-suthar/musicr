@@ -44,7 +44,8 @@ type Player struct {
 	reqID atomic.Int64
 	mu    sync.Mutex // protects writes to conn
 
-	done chan struct{} // closed when mpv process exits
+	done    chan struct{} // closed when mpv process exits
+	exitErr error
 }
 
 // ipcRequest is a JSON IPC command sent to mpv.
@@ -69,7 +70,9 @@ func Start() (*Player, error) {
 	socketPath := filepath.Join(os.TempDir(), fmt.Sprintf("musicr-mpv-%d.sock", os.Getpid()))
 
 	// Remove stale socket if it exists
-	os.Remove(socketPath)
+	if err := os.Remove(socketPath); err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("failed to remove stale socket: %w", err)
+	}
 
 	cmd := exec.Command("mpv",
 		"--no-video",
@@ -121,7 +124,7 @@ func Start() (*Player, error) {
 
 	// Monitor mpv process exit
 	go func() {
-		cmd.Wait()
+		p.exitErr = cmd.Wait()
 		close(p.done)
 	}()
 
@@ -181,6 +184,11 @@ func (p *Player) Quit() {
 // Done returns a channel that is closed when the mpv process exits.
 func (p *Player) Done() <-chan struct{} {
 	return p.done
+}
+
+// ExitError returns the exit error of the mpv process, if any.
+func (p *Player) ExitError() error {
+	return p.exitErr
 }
 
 // sendCommand sends a JSON IPC command to mpv.

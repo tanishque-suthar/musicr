@@ -31,21 +31,26 @@ func (t Track) StreamURL() string {
 	return "https://www.youtube.com/watch?v=" + t.ID
 }
 
+// baseArgs returns the base yt-dlp arguments used across all commands.
+func baseArgs() []string {
+	return []string{
+		"--no-warnings",
+		"--force-ipv4",
+	}
+}
+
 // Resolve runs yt-dlp to resolve a search query into a Track.
 // It uses ytsearch1 to find the top result and extracts the video ID, title, and direct URL.
 func Resolve(ctx context.Context, query string) (Track, error) {
-	args := []string{
+	args := append([]string{
 		"ytsearch1:" + query,
 		"--print", "id",
 		"--print", "title",
 		"--print", "urls",
 		"--format", "251/140/bestaudio/best",
 		"--extractor-args", "youtube:player_client=android;skip=webpage",
-		"--force-ipv4",
-		"--no-warnings",
 		"--no-playlist",
-	}
-
+	}, baseArgs()...)
 	cmd := exec.CommandContext(ctx, "yt-dlp", args...)
 	out, err := cmd.Output()
 	if err != nil {
@@ -70,14 +75,12 @@ func Resolve(ctx context.Context, query string) (Track, error) {
 func FetchMixTracks(ctx context.Context, videoID string, maxResults int) ([]string, error) {
 	mixURL := "https://www.youtube.com/watch?v=" + videoID + "&list=RD" + videoID
 
-	args := []string{
+	args := append([]string{
 		mixURL,
 		"--flat-playlist",
 		"--print", "title",
-		"--no-warnings",
-		"--force-ipv4",
 		"--playlist-end", fmt.Sprintf("%d", maxResults),
-	}
+	}, baseArgs()...)
 
 	cmd := exec.CommandContext(ctx, "yt-dlp", args...)
 	out, err := cmd.Output()

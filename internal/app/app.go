@@ -355,7 +355,13 @@ func (a *App) playTrack(index int) {
 		}
 
 		if nextTrack, nextIdx, ok := a.queue.PeekNext(); ok && !nextTrack.Resolved() {
-			a.queue.ResolveTrack(a.ctx, nextIdx)
+			_, err := a.queue.ResolveTrack(a.ctx, nextIdx)
+			if err != nil && err != context.Canceled {
+				select {
+				case a.prefetchCh <- prefetchResult{index: nextIdx, err: fmt.Errorf("prefetch: %w", err)}:
+				case <-a.ctx.Done():
+				}
+			}
 		}
 	}(index)
 
