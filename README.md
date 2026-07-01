@@ -17,12 +17,14 @@ Single Go binary. No GUI. No bloat.
 ### Prerequisites
 
 ```bash
+# Ubuntu / Debian (only tested on Ubuntu)
+sudo apt install mpv
+sudo add-apt-repository ppa:tomtomtom/yt-dlp    # Add ppa repo to apt
+sudo apt update                                 # Update package list
+sudo apt install yt-dlp                         # Install yt-dlp
+
 # macOS
 brew install mpv yt-dlp
-
-# Ubuntu / Debian
-sudo apt install mpv
-pip install -U yt-dlp
 
 # Arch
 sudo pacman -S mpv yt-dlp
@@ -86,7 +88,7 @@ musicr list
 ## How It Works
 
 ```
-musicr "tame impala"
+musicr tame impala
   -> yt-dlp resolves the search query to a YouTube video ID
   -> mpv streams the audio (no video) via JSON IPC
   -> The TUI renders a progress bar, queue, and keybinding help
@@ -113,8 +115,9 @@ musicr is a thin wrapper around two incredible open-source projects:
   resolve search queries into video IDs and to fetch YouTube Mix playlists for
   radio mode.
 
-Both tools are used as external subprocesses; musicr would not exist without
-the decades of engineering that went into them.
+Both tools are used as external subprocesses; musicr would not exist without them.
+
+i was using mpv and yt-dlp script locally. seeing how well the script worked, i decided to vibe-code this :P 
 
 ## License
 
