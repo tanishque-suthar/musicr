@@ -11,6 +11,7 @@ import (
 type Track struct {
 	ID    string // YouTube video ID (empty if unresolved)
 	Title string // video title (empty if unresolved)
+	URL   string // direct audio stream URL (empty if unresolved)
 	Query string // original search query
 }
 
@@ -19,9 +20,11 @@ func (t Track) Resolved() bool {
 	return t.ID != ""
 }
 
-// StreamURL returns the YouTube URL for mpv to stream from.
-// mpv + ytdlp together handle the actual stream URL resolution.
+// StreamURL returns the direct URL for mpv to stream from.
 func (t Track) StreamURL() string {
+	if t.URL != "" {
+		return t.URL
+	}
 	if t.ID == "" {
 		return ""
 	}
@@ -29,12 +32,13 @@ func (t Track) StreamURL() string {
 }
 
 // Resolve runs yt-dlp to resolve a search query into a Track.
-// It uses ytsearch1 to find the top result and extracts the video ID and title.
+// It uses ytsearch1 to find the top result and extracts the video ID, title, and direct URL.
 func Resolve(ctx context.Context, query string) (Track, error) {
 	args := []string{
 		"ytsearch1:" + query,
 		"--print", "id",
 		"--print", "title",
+		"--print", "urls",
 		"--format", "251/140/bestaudio/best",
 		"--extractor-args", "youtube:player_client=android;skip=webpage",
 		"--force-ipv4",
@@ -49,13 +53,14 @@ func Resolve(ctx context.Context, query string) (Track, error) {
 	}
 
 	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
-	if len(lines) < 2 {
+	if len(lines) < 3 {
 		return Track{}, fmt.Errorf("yt-dlp resolve %q: unexpected output (got %d lines)", query, len(lines))
 	}
 
 	return Track{
 		ID:    strings.TrimSpace(lines[0]),
 		Title: strings.TrimSpace(lines[1]),
+		URL:   strings.TrimSpace(lines[2]),
 		Query: query,
 	}, nil
 }
