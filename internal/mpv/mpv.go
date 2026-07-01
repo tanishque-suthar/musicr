@@ -160,16 +160,21 @@ func (p *Player) Stop() error {
 	return p.sendCommand("stop")
 }
 
-// Quit sends the quit command to mpv.
+// Quit closes the connection and waits for mpv to exit.
 func (p *Player) Quit() {
 	p.sendCommand("quit")
-	p.conn.Close()
+	p.mu.Lock()
+	if p.conn != nil {
+		p.conn.Close()
+	}
+	p.mu.Unlock()
 	os.Remove(p.socketPath)
-	// Wait briefly for mpv to exit
 	select {
 	case <-p.done:
 	case <-time.After(2 * time.Second):
-		p.cmd.Process.Kill()
+		if p.cmd != nil && p.cmd.Process != nil {
+			p.cmd.Process.Kill()
+		}
 	}
 }
 

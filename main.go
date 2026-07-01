@@ -113,33 +113,17 @@ func checkDeps() {
 
 // listPlaylists prints all saved playlists to stdout.
 func listPlaylists() {
-	home, err := os.UserHomeDir()
+	names, err := app.ListPlaylists()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "musicr: %v\n", err)
 		os.Exit(1)
 	}
-
-	dir := home + "/.config/musicr/playlists"
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			fmt.Println("No saved playlists.")
-			return
-		}
-		fmt.Fprintf(os.Stderr, "musicr: %v\n", err)
-		os.Exit(1)
-	}
-
-	found := false
-	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".txt") {
-			name := strings.TrimSuffix(e.Name(), ".txt")
-			fmt.Printf("  %s\n", name)
-			found = true
-		}
-	}
-	if !found {
+	if len(names) == 0 {
 		fmt.Println("No saved playlists.")
+		return
+	}
+	for _, n := range names {
+		fmt.Printf("  %s\n", n)
 	}
 }
 
