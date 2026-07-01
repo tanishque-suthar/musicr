@@ -9,3 +9,6 @@ musicr
 .vscode/
 *.swp
 *.swo
+
+# Agent scratch files
+agents/
