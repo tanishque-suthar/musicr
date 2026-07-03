@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/tanishque-suthar/musicr/internal/ytdlp"
@@ -43,6 +44,25 @@ func (q *Queue) AddTracks(queries []string) {
 	defer q.mu.Unlock()
 	for _, query := range queries {
 		q.tracks = append(q.tracks, ytdlp.Track{Query: query})
+	}
+}
+
+// InsertAt inserts an unresolved track at the given index, shifting
+// existing tracks right. Adjusts current index if needed.
+func (q *Queue) InsertAt(index int, query string) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if index < 0 {
+		index = 0
+	}
+	if index > len(q.tracks) {
+		index = len(q.tracks)
+	}
+	q.tracks = append(q.tracks, ytdlp.Track{})
+	copy(q.tracks[index+1:], q.tracks[index:])
+	q.tracks[index] = ytdlp.Track{Query: query}
+	if index <= q.current {
+		q.current++
 	}
 }
 
@@ -147,7 +167,7 @@ func (q *Queue) ResolveTrack(ctx context.Context, index int) (ytdlp.Track, error
 	q.mu.RLock()
 	if index < 0 || index >= len(q.tracks) {
 		q.mu.RUnlock()
-		return ytdlp.Track{}, nil
+		return ytdlp.Track{}, fmt.Errorf("track index %d out of range (len=%d)", index, len(q.tracks))
 	}
 	track := q.tracks[index]
 	q.mu.RUnlock()

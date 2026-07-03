@@ -275,8 +275,79 @@ func TestTracksCopy(t *testing.T) {
 func TestResolveTrackOutOfRange(t *testing.T) {
 	q := New()
 	_, err := q.ResolveTrack(context.Background(), 0)
-	if err != nil {
-		t.Fatalf("expected nil error for out of range, got %v", err)
+	if err == nil {
+		t.Fatal("expected error for out of range, got nil")
+	}
+}
+
+func TestInsertAt(t *testing.T) {
+	q := New()
+	q.Add("a")
+	q.Add("c")
+	q.SetCurrent(0)
+
+	q.InsertAt(1, "b")
+	if q.Len() != 3 {
+		t.Fatalf("expected len 3, got %d", q.Len())
+	}
+	titles := q.Titles()
+	if titles[1] != "b" {
+		t.Fatalf("expected 'b' at index 1, got %q", titles[1])
+	}
+	if titles[2] != "c" {
+		t.Fatalf("expected 'c' at index 2, got %q", titles[2])
+	}
+}
+
+func TestInsertAtBeforeCurrent(t *testing.T) {
+	q := New()
+	q.Add("a")
+	q.Add("b")
+	q.SetCurrent(1)
+
+	q.InsertAt(0, "x")
+	_, idx := q.Current()
+	if idx != 2 {
+		t.Fatalf("expected current 2 after insert before, got %d", idx)
+	}
+}
+
+func TestInsertAtAfterCurrent(t *testing.T) {
+	q := New()
+	q.Add("a")
+	q.Add("c")
+	q.SetCurrent(0)
+
+	q.InsertAt(1, "b")
+	_, idx := q.Current()
+	if idx != 0 {
+		t.Fatalf("expected current unchanged at 0, got %d", idx)
+	}
+}
+
+func TestInsertAtClampNegative(t *testing.T) {
+	q := New()
+	q.Add("a")
+	q.SetCurrent(0)
+
+	q.InsertAt(-5, "first")
+	_, idx := q.Current()
+	if idx != 1 {
+		t.Fatalf("expected current 1 after insert clamped to 0, got %d", idx)
+	}
+	if q.Len() != 2 {
+		t.Fatalf("expected len 2, got %d", q.Len())
+	}
+}
+
+func TestInsertAtClampBeyond(t *testing.T) {
+	q := New()
+	q.Add("a")
+	q.SetCurrent(0)
+
+	q.InsertAt(10, "last")
+	if q.Len() != 2 {
+		t.Fatalf("expected len 2, got %d", q.Len())
 	}
 }
 

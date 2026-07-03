@@ -64,9 +64,10 @@ const (
 
 // prefetchResult is the result of a background track resolution.
 type prefetchResult struct {
-	index int
-	track ytdlp.Track
-	err   error
+	index          int
+	track          ytdlp.Track
+	err            error
+	advanceOnError bool // if true, auto-advance to next track on error
 }
 
 // New creates a new App with the given config. Does not start anything yet.
@@ -125,9 +126,12 @@ func (a *App) Run() error {
 		a.queue.Add(q)
 	}
 
-	// Start playing the first track if we have any
+	// Start playing the first track if we have any.
+	// loadPlaylist already calls playTrack, so skip if it already started.
 	if a.queue.Len() > 0 {
-		a.playTrack(0)
+		if _, idx := a.queue.Current(); idx == -1 {
+			a.playTrack(0)
+		}
 	}
 
 	// Initial render
@@ -168,6 +172,9 @@ func (a *App) eventLoop() error {
 			a.radioFetching = false
 			a.queue.AddTracks(titles)
 			a.statusMsg = fmt.Sprintf("Radio: added %d tracks", len(titles))
+			if _, idx := a.queue.Current(); idx == -1 {
+				a.playTrack(0)
+			}
 			a.render()
 
 		case <-a.player.Done():
@@ -271,11 +278,15 @@ func (a *App) processLineInput(action inputAction, line string) {
 	switch action {
 	case inputAdd:
 		if line != "" {
-			a.queue.Add(line)
-			a.statusMsg = fmt.Sprintf("Added: %s", line)
-			// If nothing was playing, start playing
-			if _, idx := a.queue.Current(); idx == -1 {
-				a.playTrack(0)
+			_, currentIdx := a.queue.Current()
+			insertAt := 0
+			if currentIdx >= 0 {
+				insertAt = currentIdx + 1
+			}
+			a.queue.InsertAt(insertAt, line)
+			a.statusMsg = fmt.Sprintf("Added next: %s", line)
+			if currentIdx == -1 {
+				a.playTrack(insertAt)
 			}
 		}
 
@@ -337,14 +348,18 @@ func (a *App) handleMpvEvent(evt mpv.Event) {
 func (a *App) handlePrefetchResult(result prefetchResult) {
 	if result.err != nil {
 		a.statusMsg = fmt.Sprintf("Resolve error: %v", result.err)
+		if result.advanceOnError {
+			a.onTrackEnd()
+			return
+		}
 		a.render()
 		return
 	}
-	// If the resolved track is the current playing track, trigger radio check.
 	_, currentIdx := a.queue.Current()
 	if result.index == currentIdx {
 		a.checkRadio()
 	}
+	a.render()
 }
 
 // playTrack resolves and starts playing the track at the given index.
@@ -355,7 +370,7 @@ func (a *App) playTrack(index int) {
 		track, err := a.queue.ResolveTrack(a.ctx, idx)
 		if err != nil {
 			select {
-			case a.prefetchCh <- prefetchResult{index: idx, err: err}:
+			case a.prefetchCh <- prefetchResult{index: idx, err: err, advanceOnError: true}:
 			case <-a.ctx.Done():
 			}
 			return
@@ -364,14 +379,19 @@ func (a *App) playTrack(index int) {
 		url := track.StreamURL()
 		if url == "" {
 			select {
-			case a.prefetchCh <- prefetchResult{index: idx, err: fmt.Errorf("track has no stream URL")}:
+			case a.prefetchCh <- prefetchResult{index: idx, err: fmt.Errorf("track has no stream URL"), advanceOnError: true}:
 			case <-a.ctx.Done():
 			}
 			return
 		}
+
+		if _, currentIdx := a.queue.Current(); currentIdx != idx {
+			return
+		}
+
 		if err := a.player.LoadFile(url, "replace"); err != nil {
 			select {
-			case a.prefetchCh <- prefetchResult{index: idx, err: fmt.Errorf("loadfile: %w", err)}:
+			case a.prefetchCh <- prefetchResult{index: idx, err: fmt.Errorf("loadfile: %w", err), advanceOnError: true}:
 			case <-a.ctx.Done():
 			}
 			return
