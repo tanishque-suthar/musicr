@@ -31,8 +31,28 @@ func TestParseArgsQuery(t *testing.T) {
 	}
 }
 
-func TestParseArgsMultipleQueries(t *testing.T) {
+func TestParseArgsMultipleWords(t *testing.T) {
 	cfg, action := parseArgs([]string{"song a", "song b"})
+	if action != actionPlay {
+		t.Fatalf("expected play, got %d", action)
+	}
+	if !reflect.DeepEqual(cfg.Queries, []string{"song a song b"}) {
+		t.Fatalf("unexpected queries: %v", cfg.Queries)
+	}
+}
+
+func TestParseArgsCommaSeparated(t *testing.T) {
+	cfg, action := parseArgs([]string{"song a, song b"})
+	if action != actionPlay {
+		t.Fatalf("expected play, got %d", action)
+	}
+	if !reflect.DeepEqual(cfg.Queries, []string{"song a", "song b"}) {
+		t.Fatalf("unexpected queries: %v", cfg.Queries)
+	}
+}
+
+func TestParseArgsCommaSeparatedMultipleArgs(t *testing.T) {
+	cfg, action := parseArgs([]string{"song a,", "song", "b"})
 	if action != actionPlay {
 		t.Fatalf("expected play, got %d", action)
 	}
@@ -83,8 +103,8 @@ func TestParseArgsListNotFirst(t *testing.T) {
 	if action != actionPlay {
 		t.Fatalf("expected play, got %d", action)
 	}
-	if len(cfg.Queries) != 2 {
-		t.Fatalf("expected 2 queries, got %d", len(cfg.Queries))
+	if len(cfg.Queries) != 1 || cfg.Queries[0] != "song list" {
+		t.Fatalf("unexpected queries: %v", cfg.Queries)
 	}
 }
 
@@ -98,5 +118,21 @@ func TestParseArgsMixed(t *testing.T) {
 	}
 	if cfg.Playlist != "jazz" {
 		t.Fatalf("expected playlist 'jazz', got %q", cfg.Playlist)
+	}
+	if !reflect.DeepEqual(cfg.Queries, []string{"song"}) {
+		t.Fatalf("unexpected queries: %v", cfg.Queries)
+	}
+}
+
+func TestParseArgsCommaAndFlags(t *testing.T) {
+	cfg, action := parseArgs([]string{"-p", "jazz", "song a, song b"})
+	if action != actionPlay {
+		t.Fatalf("expected play, got %d", action)
+	}
+	if cfg.Playlist != "jazz" {
+		t.Fatalf("expected playlist 'jazz', got %q", cfg.Playlist)
+	}
+	if !reflect.DeepEqual(cfg.Queries, []string{"song a", "song b"}) {
+		t.Fatalf("unexpected queries: %v", cfg.Queries)
 	}
 }

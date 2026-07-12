@@ -83,8 +83,14 @@ func parseArgs(args []string) (app.Config, actionType) {
 			i++
 
 		default:
-			cfg.Queries = append(cfg.Queries, args[i])
-			i++
+			raw := strings.Join(args[i:], " ")
+			raw = strings.ReplaceAll(raw, "\"", "")
+			for _, q := range strings.Split(raw, ",") {
+				if trimmed := strings.TrimSpace(q); trimmed != "" {
+					cfg.Queries = append(cfg.Queries, trimmed)
+				}
+			}
+			i = len(args)
 		}
 	}
 
@@ -131,7 +137,7 @@ func printUsage() {
 	fmt.Println(`musicr — stream music from YouTube via mpv + yt-dlp
 
 Usage:
-  musicr <query...>        Play a track (enters interactive mode, radio on)
+  musicr <query>            Play a track (comma-separated for multiple, enters interactive mode, radio on)
   musicr -p <playlist>     Load and play a saved playlist
   musicr --no-radio        Disable auto-extend for this session
   musicr list              List saved playlists
