@@ -3,52 +3,74 @@ package queue
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"sync"
 
 	"github.com/tanishque-suthar/musicr/internal/ytdlp"
 )
 
-// Queue manages an ordered list of tracks for playback.
-// Tracks start as unresolved (query string only) and are resolved
-// just-in-time via yt-dlp before playback.
-type Queue struct {
-	mu      sync.RWMutex
-	tracks  []ytdlp.Track
-	current int // index of the currently playing track, -1 if none
+type RepeatMode int
+
+const (
+	RepeatOff RepeatMode = iota
+	RepeatOne
+	RepeatAll
+)
+
+func (m RepeatMode) String() string {
+	switch m {
+	case RepeatOne:
+		return "one"
+	case RepeatAll:
+		return "all"
+	default:
+		return "off"
+	}
 }
 
-// New creates an empty queue.
+type Queue struct {
+	mu            sync.RWMutex
+	tracks        []ytdlp.Track
+	originalOrder []ytdlp.Track
+	current       int
+	repeat        RepeatMode
+}
+
 func New() *Queue {
 	return &Queue{
 		current: -1,
 	}
 }
 
-// Add appends an unresolved track (search query) to the queue.
 func (q *Queue) Add(query string) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.tracks = append(q.tracks, ytdlp.Track{Query: query})
+	if q.originalOrder != nil {
+		q.originalOrder = append(q.originalOrder, ytdlp.Track{Query: query})
+	}
 }
 
-// AddTrack appends a pre-populated track to the queue.
 func (q *Queue) AddTrack(t ytdlp.Track) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.tracks = append(q.tracks, t)
+	if q.originalOrder != nil {
+		q.originalOrder = append(q.originalOrder, t)
+	}
 }
 
-// AddTracks appends multiple queries as unresolved tracks.
 func (q *Queue) AddTracks(queries []string) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	for _, query := range queries {
 		q.tracks = append(q.tracks, ytdlp.Track{Query: query})
+		if q.originalOrder != nil {
+			q.originalOrder = append(q.originalOrder, ytdlp.Track{Query: query})
+		}
 	}
 }
 
-// InsertAt inserts an unresolved track at the given index, shifting
-// existing tracks right. Adjusts current index if needed.
 func (q *Queue) InsertAt(index int, query string) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -64,11 +86,13 @@ func (q *Queue) InsertAt(index int, query string) {
 	if index <= q.current {
 		q.current++
 	}
+	if q.originalOrder != nil {
+		q.originalOrder = append(q.originalOrder, ytdlp.Track{})
+		copy(q.originalOrder[index+1:], q.originalOrder[index:])
+		q.originalOrder[index] = ytdlp.Track{Query: query}
+	}
 }
 
-// Remove removes the track at the given index (0-based).
-// Returns false if the index is out of range, and whether the removed
-// track was the currently playing one.
 func (q *Queue) Remove(index int) (ok bool, removedCurrent bool) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -77,6 +101,9 @@ func (q *Queue) Remove(index int) (ok bool, removedCurrent bool) {
 	}
 	wasCurrent := index == q.current
 	q.tracks = append(q.tracks[:index], q.tracks[index+1:]...)
+	if q.originalOrder != nil {
+		q.originalOrder = append(q.originalOrder[:index], q.originalOrder[index+1:]...)
+	}
 	if index < q.current {
 		q.current--
 	} else if index == q.current {
@@ -87,8 +114,6 @@ func (q *Queue) Remove(index int) (ok bool, removedCurrent bool) {
 	return true, wasCurrent
 }
 
-// Current returns the currently playing track and its index.
-// Returns an empty track and -1 if nothing is playing.
 func (q *Queue) Current() (ytdlp.Track, int) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
@@ -98,40 +123,42 @@ func (q *Queue) Current() (ytdlp.Track, int) {
 	return q.tracks[q.current], q.current
 }
 
-// SetCurrent sets the current track index.
 func (q *Queue) SetCurrent(index int) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.current = index
 }
 
-// Next advances to the next track and returns it.
-// Returns false if already at the end.
 func (q *Queue) Next() (ytdlp.Track, int, bool) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	next := q.current + 1
 	if next >= len(q.tracks) {
-		return ytdlp.Track{}, -1, false
+		if q.repeat == RepeatAll && len(q.tracks) > 0 {
+			next = 0
+		} else {
+			return ytdlp.Track{}, -1, false
+		}
 	}
 	q.current = next
 	return q.tracks[next], next, true
 }
 
-// Prev goes to the previous track and returns it.
-// Returns false if already at the beginning.
 func (q *Queue) Prev() (ytdlp.Track, int, bool) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	prev := q.current - 1
 	if prev < 0 {
-		return ytdlp.Track{}, -1, false
+		if q.repeat == RepeatAll && len(q.tracks) > 0 {
+			prev = len(q.tracks) - 1
+		} else {
+			return ytdlp.Track{}, -1, false
+		}
 	}
 	q.current = prev
 	return q.tracks[prev], prev, true
 }
 
-// Tracks returns a copy of all tracks in the queue.
 func (q *Queue) Tracks() []ytdlp.Track {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
@@ -140,18 +167,19 @@ func (q *Queue) Tracks() []ytdlp.Track {
 	return out
 }
 
-// Len returns the number of tracks in the queue.
 func (q *Queue) Len() int {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 	return len(q.tracks)
 }
 
-// Remaining returns how many tracks are left after the current one.
 func (q *Queue) Remaining() int {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 	if q.current < 0 {
+		return len(q.tracks)
+	}
+	if q.repeat == RepeatAll && len(q.tracks) > 0 {
 		return len(q.tracks)
 	}
 	rem := len(q.tracks) - q.current - 1
@@ -161,8 +189,6 @@ func (q *Queue) Remaining() int {
 	return rem
 }
 
-// ResolveTrack resolves the track at the given index using yt-dlp.
-// Updates the track in-place with the resolved ID and Title.
 func (q *Queue) ResolveTrack(ctx context.Context, index int) (ytdlp.Track, error) {
 	q.mu.RLock()
 	if index < 0 || index >= len(q.tracks) {
@@ -183,25 +209,26 @@ func (q *Queue) ResolveTrack(ctx context.Context, index int) (ytdlp.Track, error
 
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	// Double-check index is still valid (queue might have changed)
 	if index < len(q.tracks) {
 		q.tracks[index] = resolved
 	}
 	return resolved, nil
 }
 
-// PeekNext returns the next track without advancing.
 func (q *Queue) PeekNext() (ytdlp.Track, int, bool) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 	next := q.current + 1
 	if next >= len(q.tracks) {
-		return ytdlp.Track{}, -1, false
+		if q.repeat == RepeatAll && len(q.tracks) > 0 {
+			next = 0
+		} else {
+			return ytdlp.Track{}, -1, false
+		}
 	}
 	return q.tracks[next], next, true
 }
 
-// Titles returns all track display names (Title if resolved, Query otherwise).
 func (q *Queue) Titles() []string {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
@@ -214,4 +241,59 @@ func (q *Queue) Titles() []string {
 		}
 	}
 	return titles
+}
+
+func (q *Queue) SetRepeat(m RepeatMode) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.repeat = m
+}
+
+func (q *Queue) Repeat() RepeatMode {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	return q.repeat
+}
+
+func (q *Queue) Shuffle() {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if len(q.tracks) <= 1 {
+		return
+	}
+	q.originalOrder = make([]ytdlp.Track, len(q.tracks))
+	copy(q.originalOrder, q.tracks)
+	rand.Shuffle(len(q.tracks), func(i, j int) {
+		q.tracks[i], q.tracks[j] = q.tracks[j], q.tracks[i]
+	})
+	q.current = 0
+}
+
+func (q *Queue) Unshuffle() {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if q.originalOrder == nil {
+		return
+	}
+	currentID := ""
+	if q.current >= 0 && q.current < len(q.tracks) {
+		currentID = q.tracks[q.current].ID
+	}
+	q.tracks = q.originalOrder
+	q.originalOrder = nil
+	q.current = 0
+	if currentID != "" {
+		for i, t := range q.tracks {
+			if t.ID == currentID {
+				q.current = i
+				break
+			}
+		}
+	}
+}
+
+func (q *Queue) IsShuffled() bool {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	return q.originalOrder != nil
 }

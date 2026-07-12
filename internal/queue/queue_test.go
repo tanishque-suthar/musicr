@@ -351,6 +351,246 @@ func TestInsertAtClampBeyond(t *testing.T) {
 	}
 }
 
+func TestRepeatModeString(t *testing.T) {
+	if RepeatOff.String() != "off" {
+		t.Fatalf("expected 'off', got %q", RepeatOff.String())
+	}
+	if RepeatOne.String() != "one" {
+		t.Fatalf("expected 'one', got %q", RepeatOne.String())
+	}
+	if RepeatAll.String() != "all" {
+		t.Fatalf("expected 'all', got %q", RepeatAll.String())
+	}
+}
+
+func TestNextRepeatAllWraps(t *testing.T) {
+	q := New()
+	q.Add("a")
+	q.Add("b")
+	q.SetCurrent(1)
+	q.SetRepeat(RepeatAll)
+
+	track, idx, ok := q.Next()
+	if !ok {
+		t.Fatal("expected ok for RepeatAll wrap")
+	}
+	if idx != 0 {
+		t.Fatalf("expected idx 0, got %d", idx)
+	}
+	if track.Query != "a" {
+		t.Fatalf("expected query 'a', got %q", track.Query)
+	}
+}
+
+func TestNextRepeatAllSingleTrack(t *testing.T) {
+	q := New()
+	q.Add("a")
+	q.SetCurrent(0)
+	q.SetRepeat(RepeatAll)
+
+	track, idx, ok := q.Next()
+	if !ok {
+		t.Fatal("expected ok with single track RepeatAll")
+	}
+	if idx != 0 {
+		t.Fatalf("expected idx 0, got %d", idx)
+	}
+	if track.Query != "a" {
+		t.Fatalf("expected 'a', got %q", track.Query)
+	}
+}
+
+func TestPrevRepeatAllWraps(t *testing.T) {
+	q := New()
+	q.Add("a")
+	q.Add("b")
+	q.SetCurrent(0)
+	q.SetRepeat(RepeatAll)
+
+	track, idx, ok := q.Prev()
+	if !ok {
+		t.Fatal("expected ok for RepeatAll wrap")
+	}
+	if idx != 1 {
+		t.Fatalf("expected idx 1, got %d", idx)
+	}
+	if track.Query != "b" {
+		t.Fatalf("expected query 'b', got %q", track.Query)
+	}
+}
+
+func TestNextRepeatOneAdvances(t *testing.T) {
+	q := New()
+	q.Add("a")
+	q.Add("b")
+	q.SetCurrent(0)
+	q.SetRepeat(RepeatOne)
+
+	track, idx, ok := q.Next()
+	if !ok {
+		t.Fatal("expected ok")
+	}
+	if idx != 1 {
+		t.Fatalf("expected idx 1, got %d", idx)
+	}
+	if track.Query != "b" {
+		t.Fatalf("expected query 'b', got %q", track.Query)
+	}
+}
+
+func TestPeekNextRepeatAllWraps(t *testing.T) {
+	q := New()
+	q.Add("a")
+	q.Add("b")
+	q.SetCurrent(1)
+	q.SetRepeat(RepeatAll)
+
+	track, idx, ok := q.PeekNext()
+	if !ok {
+		t.Fatal("expected ok for RepeatAll peek")
+	}
+	if idx != 0 {
+		t.Fatalf("expected idx 0, got %d", idx)
+	}
+	if track.Query != "a" {
+		t.Fatalf("expected query 'a', got %q", track.Query)
+	}
+	_, cur := q.Current()
+	if cur != 1 {
+		t.Fatalf("expected current unchanged at 1, got %d", cur)
+	}
+}
+
+func TestRemainingRepeatAll(t *testing.T) {
+	q := New()
+	q.Add("a")
+	q.Add("b")
+	q.SetCurrent(0)
+	q.SetRepeat(RepeatAll)
+
+	if rem := q.Remaining(); rem != 2 {
+		t.Fatalf("expected 2 remaining with RepeatAll, got %d", rem)
+	}
+}
+
+func TestShuffle(t *testing.T) {
+	q := New()
+	q.Add("a")
+	q.Add("b")
+	q.Add("c")
+	q.Add("d")
+	q.SetCurrent(0)
+
+	original := q.Titles()
+	q.Shuffle()
+
+	if !q.IsShuffled() {
+		t.Fatal("expected shuffled")
+	}
+	if q.Len() != 4 {
+		t.Fatalf("expected len 4, got %d", q.Len())
+	}
+	_, cur := q.Current()
+	if cur != 0 {
+		t.Fatalf("expected current 0 after shuffle, got %d", cur)
+	}
+	shuffled := q.Titles()
+	sameOrder := true
+	for i := range original {
+		if original[i] != shuffled[i] {
+			sameOrder = false
+			break
+		}
+	}
+	if sameOrder {
+		t.Fatal("shuffle should have changed the order")
+	}
+}
+
+func TestUnshuffle(t *testing.T) {
+	q := New()
+	q.Add("a")
+	q.Add("b")
+	q.Add("c")
+	q.SetCurrent(0)
+
+	original := q.Titles()
+	q.Shuffle()
+	q.Unshuffle()
+
+	if q.IsShuffled() {
+		t.Fatal("expected not shuffled after unshuffle")
+	}
+	restored := q.Titles()
+	for i := range original {
+		if original[i] != restored[i] {
+			t.Fatalf("expected %q at %d, got %q", original[i], i, restored[i])
+		}
+	}
+}
+
+func TestUnshuffleWithoutShuffle(t *testing.T) {
+	q := New()
+	q.Add("a")
+	q.Unshuffle() // should be a no-op
+	if q.Len() != 1 {
+		t.Fatalf("expected len 1, got %d", q.Len())
+	}
+}
+
+func TestShuffleSingleTrack(t *testing.T) {
+	q := New()
+	q.Add("a")
+	q.SetCurrent(0)
+
+	q.Shuffle()
+	// Shuffle with 1 track is a no-op
+	if q.IsShuffled() {
+		t.Fatal("expected not shuffled for single track")
+	}
+	if q.Len() != 1 {
+		t.Fatalf("expected len 1, got %d", q.Len())
+	}
+}
+
+func TestAddDuringShuffle(t *testing.T) {
+	q := New()
+	q.Add("a")
+	q.Add("b")
+	q.SetCurrent(0)
+	q.Shuffle()
+	before := q.Len()
+
+	q.Add("c")
+	if q.Len() != before+1 {
+		t.Fatalf("expected len %d, got %d", before+1, q.Len())
+	}
+	q.Unshuffle()
+	titles := q.Titles()
+	if titles[2] != "c" {
+		t.Fatalf("expected 'c' at index 2 after unshuffle, got %q", titles[2])
+	}
+}
+
+func TestSetRepeat(t *testing.T) {
+	q := New()
+	if q.Repeat() != RepeatOff {
+		t.Fatal("expected RepeatOff initially")
+	}
+	q.SetRepeat(RepeatOne)
+	if q.Repeat() != RepeatOne {
+		t.Fatal("expected RepeatOne")
+	}
+	q.SetRepeat(RepeatAll)
+	if q.Repeat() != RepeatAll {
+		t.Fatal("expected RepeatAll")
+	}
+	q.SetRepeat(RepeatOff)
+	if q.Repeat() != RepeatOff {
+		t.Fatal("expected RepeatOff")
+	}
+}
+
 func TestConcurrentSafe(t *testing.T) {
 	q := New()
 	done := make(chan struct{})

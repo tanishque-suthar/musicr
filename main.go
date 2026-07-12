@@ -146,6 +146,8 @@ Interactive keys:
   a       Add a track (prompts for search query)
   n       Next track
   p       Previous track
+  z       Cycle repeat mode (off/one/all)
+  x       Toggle shuffle
   space   Pause / resume
   s       Save queue as a playlist
   l       Load a playlist

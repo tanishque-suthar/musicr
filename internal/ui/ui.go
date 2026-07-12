@@ -24,6 +24,8 @@ type State struct {
 	Paused      bool
 	Volume      float64
 	RadioOn     bool
+	RepeatMode  string   // "off", "one", "all"
+	Shuffled    bool
 	Queue       []string // display names for all tracks
 	QueueIdx    int      // index of currently playing track (-1 if none)
 	InputMode   InputMode
@@ -115,7 +117,12 @@ func (u *UI) Render(s State) {
 		radioStatus = "on"
 		radioColor = "\033[92m" // bright green
 	}
-	b.WriteString(fmt.Sprintf("  \033[1;95mmusicr\033[0m  —  radio mode: %s%s\033[0m  |  vol: %.0f%%\n\n", radioColor, radioStatus, s.Volume))
+	repeatStr := fmt.Sprintf("repeat: %s", s.RepeatMode)
+	shuffleStr := ""
+	if s.Shuffled {
+		shuffleStr = "  |  shuffle"
+	}
+	b.WriteString(fmt.Sprintf("  \033[1;95mmusicr\033[0m  —  radio: %s%s\033[0m  |  %s  |  vol: %.0f%%%s\n\n", radioColor, radioStatus, repeatStr, s.Volume, shuffleStr))
 
 	// Now playing
 	if s.TrackTitle != "" {
@@ -191,7 +198,7 @@ func (u *UI) Render(s State) {
 	if s.InputMode == ModeLineInput {
 		b.WriteString("  \033[90m[enter] confirm  [esc] cancel\033[0m")
 	} else {
-		b.WriteString("  \033[90m[a]dd  [n]ext  [p]rev  [space]pause  [s]ave  [l]oad  [r]adio  [d]elete  [q]uit\033[0m")
+		b.WriteString("  \033[90m[a]dd  [n]ext  [p]rev  [z]repeat  [x]shuffle  [space]pause  [s]ave  [l]oad  [r]adio  [d]elete  [q]uit\033[0m")
 	}
 
 	// In raw terminal mode, \n only moves the cursor down (Line Feed), but does

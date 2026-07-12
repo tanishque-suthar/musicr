@@ -220,6 +220,28 @@ func (a *App) handleKey(key byte) bool {
 			a.statusMsg = "Radio mode: off"
 		}
 
+	case 'z': // cycle repeat mode
+		switch a.queue.Repeat() {
+		case queue.RepeatOff:
+			a.queue.SetRepeat(queue.RepeatOne)
+			a.statusMsg = "Repeat: one"
+		case queue.RepeatOne:
+			a.queue.SetRepeat(queue.RepeatAll)
+			a.statusMsg = "Repeat: all"
+		case queue.RepeatAll:
+			a.queue.SetRepeat(queue.RepeatOff)
+			a.statusMsg = "Repeat: off"
+		}
+
+	case 'x': // toggle shuffle
+		if a.queue.IsShuffled() {
+			a.queue.Unshuffle()
+			a.statusMsg = "Shuffle: off"
+		} else {
+			a.queue.Shuffle()
+			a.statusMsg = "Shuffle: on"
+		}
+
 	case 'd':
 		a.enterLineInput(inputDelete)
 
@@ -417,10 +439,15 @@ func (a *App) playTrack(index int) {
 
 // onTrackEnd handles the end of the current track.
 func (a *App) onTrackEnd() {
-	// Check if we need more radio tracks
 	a.checkRadio()
 
-	// Advance to next track
+	if a.queue.Repeat() == queue.RepeatOne {
+		if _, idx := a.queue.Current(); idx >= 0 {
+			a.playTrack(idx)
+			return
+		}
+	}
+
 	if _, nextIdx, ok := a.queue.Next(); ok {
 		a.playTrack(nextIdx)
 	} else {
@@ -598,6 +625,8 @@ func (a *App) render() {
 		Paused:      a.paused,
 		Volume:      a.volume,
 		RadioOn:     a.radioOn,
+		RepeatMode:  a.queue.Repeat().String(),
+		Shuffled:    a.queue.IsShuffled(),
 		Queue:       a.queue.Titles(),
 		QueueIdx:    idx,
 		InputMode:   a.inputMode,
