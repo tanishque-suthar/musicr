@@ -6,6 +6,8 @@ Single Go binary. No GUI. No bloat.
 ## Features
 
 - **Interactive TUI** — progress bar, live queue, single-keystroke controls
+- **Repeat modes** — repeat one track, repeat entire queue, or no repeat
+- **Shuffle** — randomize playback order (restorable)
 - **Radio mode** — auto-extends your queue from YouTube Mix (on by default)
 - **Volume and seek controls** — adjust volume and skip forward/backward without leaving the terminal
 - **Playlists** — save/load queues as plain text files (one search query per line)
@@ -54,8 +56,8 @@ curl -fsSL https://raw.githubusercontent.com/tanishque-suthar/musicr/main/instal
 # Play a track
 musicr tame impala the less i know the better
 
-# Play multiple tracks
-musicr "tame impala" "mac demarco chamber of reflection" "khruangbin time"
+# Play multiple tracks (comma-separated)
+musicr tame impala, mac demarco chamber of reflection, khruangbin time
 
 # Load a saved playlist
 musicr -p chill
@@ -78,6 +80,8 @@ musicr list
 | `s`       | Save queue as a playlist (prompts for name)     |
 | `l`       | Load a playlist (prompts for name)              |
 | `r`       | Toggle radio mode (auto-extend)                 |
+| `z`       | Cycle repeat mode (off → one → all)            |
+| `x`       | Toggle shuffle                                  |
 | `d`       | Delete a track from the queue                   |
 | `+` / `=` | Volume up (1 step)                              |
 | `-` / `_` | Volume down (1 step)                            |
