@@ -136,3 +136,33 @@ func TestParseArgsCommaAndFlags(t *testing.T) {
 		t.Fatalf("unexpected queries: %v", cfg.Queries)
 	}
 }
+
+func TestParseArgsVersion(t *testing.T) {
+	for _, flag := range []string{"-v", "--version"} {
+		_, action := parseArgs([]string{flag})
+		if action != actionVersion {
+			t.Fatalf("expected version for %s, got %d", flag, action)
+		}
+	}
+}
+
+func TestParseArgsUpdate(t *testing.T) {
+	_, action := parseArgs([]string{"--update"})
+	if action != actionUpdate {
+		t.Fatalf("expected update, got %d", action)
+	}
+}
+
+func TestParseArgsUpdateCheck(t *testing.T) {
+	_, action := parseArgs([]string{"--update-check"})
+	if action != actionUpdateCheck {
+		t.Fatalf("expected update-check, got %d", action)
+	}
+}
+
+func TestParseArgsUpdateWithQuery(t *testing.T) {
+	_, action := parseArgs([]string{"--update", "song"})
+	if action != actionUpdate {
+		t.Fatalf("expected update, got %d", action)
+	}
+}
