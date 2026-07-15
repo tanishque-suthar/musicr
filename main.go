@@ -166,7 +166,7 @@ func doUpdate() {
 		if version == "dev" {
 			fmt.Println("musicr: unknown current version, performing update anyway...")
 		} else {
-			fmt.Printf("Already up to date (v%s)\n", version)
+			fmt.Printf("Already up to date (%s)\n", version)
 			return
 		}
 	}
@@ -185,7 +185,7 @@ func doUpdateCheck() {
 		os.Exit(1)
 	}
 	if needsUpdate {
-		fmt.Printf("Update available: %s (current: v%s)\n", latest, version)
+		fmt.Printf("Update available: %s (current: %s)\n", latest, version)
 	} else {
 		fmt.Printf("Already up to date (v%s)\n", version)
 	}

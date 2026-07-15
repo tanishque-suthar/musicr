@@ -52,7 +52,7 @@ func Check(currentVersion string) (latest string, needsUpdate bool, err error) {
 		return rel.TagName, true, nil
 	}
 
-	needsUpdate, err = versionGreater(rel.TagName, "v"+currentVersion)
+	needsUpdate, err = versionGreater(rel.TagName, currentVersion)
 	if err != nil {
 		return "", false, err
 	}
