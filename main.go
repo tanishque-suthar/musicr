@@ -7,10 +7,12 @@ import (
 	"strings"
 
 	"github.com/tanishque-suthar/musicr/internal/app"
+	"github.com/tanishque-suthar/musicr/internal/update"
 )
 
+var version = "dev"
+
 func main() {
-	// Parse arguments
 	cfg, action := parseArgs(os.Args[1:])
 
 	switch action {
@@ -31,6 +33,15 @@ func main() {
 
 	case actionHelp:
 		printUsage()
+
+	case actionVersion:
+		fmt.Println("musicr version", version)
+
+	case actionUpdate:
+		doUpdate()
+
+	case actionUpdateCheck:
+		doUpdateCheck()
 	}
 }
 
@@ -41,6 +52,9 @@ const (
 	actionList
 	actionSave
 	actionHelp
+	actionVersion
+	actionUpdate
+	actionUpdateCheck
 )
 
 func parseArgs(args []string) (app.Config, actionType) {
@@ -55,6 +69,15 @@ func parseArgs(args []string) (app.Config, actionType) {
 		switch args[i] {
 		case "-h", "--help":
 			return cfg, actionHelp
+
+		case "-v", "--version":
+			return cfg, actionVersion
+
+		case "--update":
+			return cfg, actionUpdate
+
+		case "--update-check":
+			return cfg, actionUpdateCheck
 
 		case "-p", "--playlist":
 			if i+1 >= len(args) {
@@ -133,6 +156,41 @@ func listPlaylists() {
 	}
 }
 
+func doUpdate() {
+	latest, needsUpdate, err := update.Check(version)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "musicr: update check failed: %v\n", err)
+		os.Exit(1)
+	}
+	if !needsUpdate {
+		if version == "dev" {
+			fmt.Println("musicr: unknown current version, performing update anyway...")
+		} else {
+			fmt.Printf("Already up to date (v%s)\n", version)
+			return
+		}
+	}
+	fmt.Printf("Updating to %s...\n", latest)
+	if err := update.Apply(latest); err != nil {
+		fmt.Fprintf(os.Stderr, "musicr: update failed: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("Updated to %s. Restart musicr to use the new version.\n", latest)
+}
+
+func doUpdateCheck() {
+	latest, needsUpdate, err := update.Check(version)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "musicr: update check failed: %v\n", err)
+		os.Exit(1)
+	}
+	if needsUpdate {
+		fmt.Printf("Update available: %s (current: v%s)\n", latest, version)
+	} else {
+		fmt.Printf("Already up to date (v%s)\n", version)
+	}
+}
+
 func printUsage() {
 	fmt.Println(`musicr — stream music from YouTube via mpv + yt-dlp
 
@@ -141,6 +199,9 @@ Usage:
   musicr -p <playlist>     Load and play a saved playlist
   musicr --no-radio        Disable auto-extend for this session
   musicr list              List saved playlists
+  musicr --version         Show version
+  musicr --update          Update to the latest release
+  musicr --update-check    Check if an update is available
 
 Interactive keys:
   a       Add a track (prompts for search query)
