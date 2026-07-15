@@ -50,6 +50,18 @@ Download from [GitHub Releases](https://github.com/tanishque-suthar/musicr/relea
 curl -fsSL https://raw.githubusercontent.com/tanishque-suthar/musicr/main/install.sh | sh
 ```
 
+### Update
+
+```bash
+# Check if a newer version is available
+musicr --update-check
+
+# Download and apply the latest release
+musicr --update
+```
+
+If the binary path isn't writable by your user, prefix with `sudo musicr --update`.
+
 ## Usage
 
 ```bash
@@ -67,6 +79,15 @@ musicr --no-radio "boards of canada"
 
 # List saved playlists
 musicr list
+
+# Show version
+musicr --version
+
+# Check for updates
+musicr --update-check
+
+# Update to the latest release
+musicr --update
 ```
 
 ## Interactive Keys
